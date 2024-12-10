@@ -1,6 +1,6 @@
 {
   "name": "vscode-iwyu",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "Include-What-You-Use",
   "description": "IWYU extension for VS Code.",
   "repository": "https://github.com/tsdb2/vscode-iwyu.git",
@@ -30,6 +30,7 @@
   "devDependencies": {
     "@types/node": "^22.10.1",
     "@types/vscode": "^1.95.0",
+    "prettier": "^3.4.2",
     "typescript": "^5.7.2",
     "vscode": "^1.1.37"
   }
