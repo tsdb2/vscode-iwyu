@@ -26,7 +26,7 @@ vscode-iwyu$ npm install
 Compile and package the extension:
 
 ```sh
-$ npx vsce package
+vscode-iwyu$ npx vsce package
 ```
 
 Then open VS Code, hit Ctrl+Shift+X to navigate to the extensions page, click "Install from VSIX..."
