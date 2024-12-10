@@ -1,5 +1,7 @@
 # `vscode-iwyu`
 
+[![License: MIT](https://img.shields.io/github/license/tsdb2/vscode-iwyu)](https://github.com/tsdb2/vscode-iwyu/blob/main/LICENSE)
+
 ## Overview
 
 A VS Code extension by TSDB2 to run [IWYU](https://include-what-you-use.org/) on C++ files.
