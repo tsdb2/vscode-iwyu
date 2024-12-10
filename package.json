@@ -21,7 +21,7 @@
     "commands": [
       {
         "command": "iwyu.analyzeFile",
-        "title": "Run IWYU"
+        "title": "IWYU: analyze current file"
       }
     ]
   },
