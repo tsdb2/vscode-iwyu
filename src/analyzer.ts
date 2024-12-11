@@ -203,6 +203,7 @@ export class Analyzer {
     const revision = this._document.getText();
     if (revision !== this._lastRevision) {
       this._lastRevision = revision;
+      Analyzer._getDiagnostics().delete(this._document.uri);
       await this._debounce(seconds);
       await this._runInternal(sourceFilePath);
     } else {
