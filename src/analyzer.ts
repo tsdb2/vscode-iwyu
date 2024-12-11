@@ -92,7 +92,7 @@ export class Analyzer {
         );
       }
     }
-    return new vscode.Range(position, position);
+    return new vscode.Range(position, position.with({ character: position.character + 1 }));
   }
 
   private _processCorrectFinding(diagnostics: DiagnosticsByUri, line: string): boolean {
