@@ -15,48 +15,43 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('iwyu.analyzeFile', () => {
+    vscode.commands.registerCommand('iwyu.analyzeFile', async () => {
       const document = vscode.window.activeTextEditor?.document;
       if (document) {
         const logger = Logger.get();
-        logger.spinner(async () => {
-          Logger.get().showAndAppendLine(`Running IWYU run on ${document.uri.fsPath}...`);
-          try {
-            await Analyzer.getFor(document).run();
-          } catch (error) {
-            vscode.window.showErrorMessage('' + error);
-          }
-        });
+        logger.showAndAppendLine(`Running IWYU run on ${document.uri.fsPath}...`);
+        try {
+          await Analyzer.getFor(document).run(/*force=*/ true);
+        } catch (error) {
+          logger.error(error as Error);
+        }
       } else {
         vscode.window.showErrorMessage('No file is currently open to analyze.');
       }
     }),
   );
   context.subscriptions.push(
-    vscode.workspace.onDidOpenTextDocument(document => {
-      if (supportedLanguages.includes(document.languageId)) {
-        const logger = Logger.get();
-        logger.spinner(async () => {
+    vscode.window.onDidChangeVisibleTextEditors(editors => {
+      editors
+        .map(editor => editor.document)
+        .filter(document => supportedLanguages.includes(document.languageId))
+        .forEach(async document => {
           try {
             await Analyzer.getFor(document).run();
           } catch (error) {
-            logger.error(error as Error);
+            Logger.get().error(error as Error);
           }
         });
-      }
     }),
   );
   context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument(document => {
+    vscode.workspace.onDidSaveTextDocument(async document => {
       if (supportedLanguages.includes(document.languageId)) {
-        const logger = Logger.get();
-        logger.spinner(async () => {
-          try {
-            await Analyzer.getFor(document).runIn(/*seconds=*/ 5);
-          } catch (error) {
-            logger.error(error as Error);
-          }
-        });
+        try {
+          await Analyzer.getFor(document).runIn(/*seconds=*/ 5);
+        } catch (error) {
+          Logger.get().error(error as Error);
+        }
       }
     }),
   );

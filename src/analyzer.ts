@@ -1,9 +1,16 @@
 import childProcess from 'node:child_process';
+import crypto from 'node:crypto';
 import path from 'node:path';
 
 import vscode from 'vscode';
 
 import { Logger } from './logger';
+
+function hash(text: string): string {
+  const hash = crypto.createHash('sha256');
+  hash.update(text);
+  return hash.digest('hex');
+}
 
 function exec(command: string, options: object): Promise<string> {
   return new Promise<string>((resolve, reject) => {
@@ -26,6 +33,9 @@ export class Analyzer {
 
   private readonly _root: vscode.WorkspaceFolder;
   private readonly _document: vscode.TextDocument;
+
+  // Hash of the last revision we analyzed, which we keep here to avoid duplicated work.
+  private _lastHash: string = '';
 
   // Timeout used to debounce our runs if the user re-saves too quickly.
   private _timeout: NodeJS.Timeout | null = null;
@@ -112,37 +122,48 @@ export class Analyzer {
     return true;
   }
 
-  public async run(): Promise<void> {
-    const commandFilePath = path.join(this._root.uri.fsPath, 'compile_commands.json');
+  public async run(force: boolean = false): Promise<void> {
+    const logger = Logger.get();
     const sourceFilePath = vscode.workspace.asRelativePath(
       this._document.uri,
       /*includeWorkspaceFolder=*/ false,
     );
+    const revision = hash(this._document.getText());
+    if (!force && revision === this._lastHash) {
+      logger.appendLine(
+        `Skipping IWYU analysis for ${sourceFilePath} which hasn't changed since last findings.`,
+      );
+      return;
+    }
+    this._lastHash = revision;
+    const commandFilePath = path.join(this._root.uri.fsPath, 'compile_commands.json');
     const command = `iwyu_tool -p '${commandFilePath}' '${sourceFilePath}' -- -Xiwyu --no_fwd_decls -Xiwyu --verbose=3 -Xiwyu --cxx17ns`;
-    const stdout = await exec(command, { cwd: this._root.uri.fsPath });
-    Logger.get().append(`IWYU run for ${sourceFilePath}:\n$ ${command}\n${stdout}`);
-    const diagnostics: DiagnosticsByUri = Object.create(null);
-    const lines = stdout.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (!this._processAddFinding(diagnostics, line)) {
-        const match = line.match(/^(.*) should remove these lines:$/);
-        if (!match) {
-          continue;
-        }
-        const [, path] = match;
-        const uri = vscode.Uri.joinPath(this._root.uri, path).toString();
-        if (!diagnostics[uri]) {
-          diagnostics[uri] = [];
-        }
-        for (i++; i < lines.length && lines[i] !== ''; i++) {
-          this._processRemoveFinding(diagnostics[uri], uri, lines[i]);
+    await logger.spinner(async () => {
+      const stdout = await exec(command, { cwd: this._root.uri.fsPath });
+      logger.append(`IWYU run for ${sourceFilePath}:\n$ ${command}\n${stdout}`);
+      const diagnostics: DiagnosticsByUri = Object.create(null);
+      const lines = stdout.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!this._processAddFinding(diagnostics, line)) {
+          const match = line.match(/^(.*) should remove these lines:$/);
+          if (!match) {
+            continue;
+          }
+          const [, path] = match;
+          const uri = vscode.Uri.joinPath(this._root.uri, path).toString();
+          if (!diagnostics[uri]) {
+            diagnostics[uri] = [];
+          }
+          for (i++; i < lines.length && lines[i] !== ''; i++) {
+            this._processRemoveFinding(diagnostics[uri], uri, lines[i]);
+          }
         }
       }
-    }
-    for (const uri in diagnostics) {
-      Analyzer._getDiagnostics().set(vscode.Uri.parse(uri), diagnostics[uri]);
-    }
+      for (const uri in diagnostics) {
+        Analyzer._getDiagnostics().set(vscode.Uri.parse(uri), diagnostics[uri]);
+      }
+    });
   }
 
   private _debounce(seconds: number): Promise<void> {
