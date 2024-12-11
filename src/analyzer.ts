@@ -18,11 +18,14 @@ function exec(command: string, options: object): Promise<string> {
 }
 
 const TOKEN_PATTERNS = [
-  /^[A-Za-z_][A-Za-z0-9_]*/, // identifier or keyword
-  /^(0[Xx])?[0-9]+(?:\.[0-9]+)?/, // number
+  /^[0-9]*\.[0-9]+/, // floating point number
+  /^0[Xx][0-9A-Fa-f]+[ULul]*/, // hex number
+  /^0[Bb][01]+[ULul]*/, // binary number
+  /^[0-9]+[ULul]*/, // integer number
   /^'(?:[^'])*'/, // character literal
   /^"(?:[^"]|\\")*"/, // string literal
   /^[Rr]"[A-Za-z]*\(.*\)[A-Za-z]*"/, // raw string literal
+  /^[A-Za-z_][A-Za-z0-9_]*/, // identifier or keyword
 ];
 
 type DiagnosticsByUri = { [uri: string]: vscode.Diagnostic[] };
