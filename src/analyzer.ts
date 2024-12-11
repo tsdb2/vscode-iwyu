@@ -95,6 +95,18 @@ export class Analyzer {
     return new vscode.Range(position, position);
   }
 
+  private _processCorrectFinding(diagnostics: DiagnosticsByUri, line: string): boolean {
+    const match = line.match(/^\((.*) has correct #includes\/fwd-decls\)$/);
+    if (match) {
+      const [, path] = match;
+      const uri = vscode.Uri.joinPath(this._root.uri, path).toString();
+      diagnostics[uri] = [];
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   private _processAddFinding(diagnostics: DiagnosticsByUri, line: string): boolean {
     const match = line.match(
       /^([^:]+):(\d+):(\d+): warning: ([^\s]+) is defined in ("[^"]+"|<[^>]+>), which isn't directly #included.$/,
@@ -150,23 +162,32 @@ export class Analyzer {
       const lines = stdout.split('\n');
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (!this._processAddFinding(diagnostics, line)) {
-          const match = line.match(/^(.*) should remove these lines:$/);
-          if (!match) {
-            continue;
-          }
-          const [, path] = match;
-          const uri = vscode.Uri.joinPath(this._root.uri, path).toString();
-          if (!diagnostics[uri]) {
-            diagnostics[uri] = [];
-          }
-          for (i++; i < lines.length && lines[i] !== ''; i++) {
-            this._processRemoveFinding(diagnostics[uri], lines[i]);
-          }
+        if (this._processCorrectFinding(diagnostics, line)) {
+          continue;
+        }
+        if (this._processAddFinding(diagnostics, line)) {
+          continue;
+        }
+        const match = line.match(/^(.*) should remove these lines:$/);
+        if (!match) {
+          continue;
+        }
+        const [, path] = match;
+        const uri = vscode.Uri.joinPath(this._root.uri, path).toString();
+        if (!diagnostics[uri]) {
+          diagnostics[uri] = [];
+        }
+        for (i++; i < lines.length && lines[i] !== ''; i++) {
+          this._processRemoveFinding(diagnostics[uri], lines[i]);
         }
       }
       for (const uri in diagnostics) {
-        Analyzer._getDiagnostics().set(vscode.Uri.parse(uri), diagnostics[uri]);
+        const diagnosticsForUri = diagnostics[uri];
+        if (diagnosticsForUri.length > 0) {
+          Analyzer._getDiagnostics().set(vscode.Uri.parse(uri), diagnosticsForUri);
+        } else {
+          Analyzer._getDiagnostics().delete(vscode.Uri.parse(uri));
+        }
       }
     });
   }
