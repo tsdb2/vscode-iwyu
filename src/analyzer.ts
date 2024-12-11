@@ -76,16 +76,6 @@ export class Analyzer {
     this._document = document;
   }
 
-  private _skip(force: boolean): boolean {
-    const revision = this._document.getText();
-    if (force || revision !== this._lastRevision) {
-      this._lastRevision = revision;
-      return false;
-    } else {
-      return true;
-    }
-  }
-
   private _getTokenRange(position: vscode.Position): vscode.Range {
     const offset = this._document.offsetAt(position);
     const text = this._document.getText().substring(offset);
@@ -146,18 +136,8 @@ export class Analyzer {
     return true;
   }
 
-  public async run(force: boolean = false): Promise<void> {
+  private async _runInternal(sourceFilePath: string): Promise<void> {
     const logger = Logger.get();
-    const sourceFilePath = vscode.workspace.asRelativePath(
-      this._document.uri,
-      /*includeWorkspaceFolder=*/ false,
-    );
-    if (this._skip(force)) {
-      logger.appendLine(
-        `Skipping IWYU analysis for ${sourceFilePath} which hasn't changed since last findings.`,
-      );
-      return;
-    }
     const commandFilePath = path.join(this._root.uri.fsPath, 'compile_commands.json');
     const command = `iwyu_tool -p '${commandFilePath}' '${sourceFilePath}' -- -Xiwyu --no_fwd_decls -Xiwyu --verbose=3 -Xiwyu --cxx17ns`;
     await logger.spinner(async () => {
@@ -188,6 +168,22 @@ export class Analyzer {
     });
   }
 
+  public async run(force: boolean = false): Promise<void> {
+    const sourceFilePath = vscode.workspace.asRelativePath(
+      this._document.uri,
+      /*includeWorkspaceFolder=*/ false,
+    );
+    const revision = this._document.getText();
+    if (force || revision !== this._lastRevision) {
+      this._lastRevision = revision;
+      await this._runInternal(sourceFilePath);
+    } else {
+      Logger.get().appendLine(
+        `Skipping IWYU analysis for ${sourceFilePath} which hasn't changed since last findings.`,
+      );
+    }
+  }
+
   private _debounce(seconds: number): Promise<void> {
     if (this._timeout !== null) {
       clearTimeout(this._timeout);
@@ -200,7 +196,19 @@ export class Analyzer {
   }
 
   public async runIn(seconds: number): Promise<void> {
-    await this._debounce(seconds);
-    await this.run();
+    const sourceFilePath = vscode.workspace.asRelativePath(
+      this._document.uri,
+      /*includeWorkspaceFolder=*/ false,
+    );
+    const revision = this._document.getText();
+    if (revision !== this._lastRevision) {
+      this._lastRevision = revision;
+      await this._debounce(seconds);
+      await this._runInternal(sourceFilePath);
+    } else {
+      Logger.get().appendLine(
+        `Skipping IWYU analysis for ${sourceFilePath} which hasn't changed since last findings.`,
+      );
+    }
   }
 }
