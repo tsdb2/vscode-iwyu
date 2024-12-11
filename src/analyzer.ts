@@ -24,6 +24,14 @@ function exec(command: string, options: object): Promise<string> {
   });
 }
 
+const TOKEN_PATTERNS = [
+  /^[A-Za-z_][A-Za-z0-9_]*/, // identifier or keyword
+  /^(0[Xx])?[0-9]+(?:\.[0-9]+)?/, // number
+  /^'(?:[^'])*'/, // character literal
+  /^"(?:[^"]|\\")*"/, // string literal
+  /^[Rr]"[A-Za-z]*\(.*\)[A-Za-z]*"/, // raw string literal
+];
+
 type DiagnosticsByUri = { [uri: string]: vscode.Diagnostic[] };
 
 export class Analyzer {
@@ -74,6 +82,22 @@ export class Analyzer {
     this._document = document;
   }
 
+  private _getTokenRange(position: vscode.Position): vscode.Range {
+    const offset = this._document.offsetAt(position);
+    const text = this._document.getText().substring(offset);
+    for (const pattern of TOKEN_PATTERNS) {
+      const match = text.match(pattern);
+      if (match) {
+        const [token] = match;
+        return new vscode.Range(
+          position,
+          position.with({ character: position.character + token.length }),
+        );
+      }
+    }
+    return new vscode.Range(position, position);
+  }
+
   private _processAddFinding(diagnostics: DiagnosticsByUri, line: string): boolean {
     const match = line.match(
       /^([^:]+):(\d+):(\d+): warning: ([^\s]+) is defined in ("[^"]+"|<[^>]+>), which isn't directly #included.$/,
@@ -85,7 +109,7 @@ export class Analyzer {
     const lineNumber = parseInt(row, 10) - 1;
     const charNumber = parseInt(column, 10) - 1;
     const diagnostic = new vscode.Diagnostic(
-      new vscode.Range(lineNumber, charNumber, lineNumber, charNumber + 1),
+      this._getTokenRange(new vscode.Position(lineNumber, charNumber)),
       `${symbol} is defined in ${include}, which isn't directly #included.`,
       vscode.DiagnosticSeverity.Warning,
     );
