@@ -51,8 +51,9 @@ export class CodeActionProvider implements vscode.CodeActionProvider {
     const prologueMatch = document.getText().match(PROLOGUE_PATTERN);
     if (prologueMatch) {
       const [prologue] = prologueMatch;
-      const position = document.positionAt(prologue.length);
-      action.edit.insert(document.uri, position, `#include ${header}\n\n`);
+      const [trailer] = prologue.match(/(?:\s*\n)*$/)!;
+      const position = document.positionAt(prologue.length - trailer.length);
+      action.edit.insert(document.uri, position, `\n#include ${header}`);
     }
     return action;
   }
