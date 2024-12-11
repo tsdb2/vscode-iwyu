@@ -45,10 +45,10 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
   context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument(async document => {
-      if (supportedLanguages.includes(document.languageId)) {
+    vscode.workspace.onDidChangeTextDocument(async event => {
+      if (supportedLanguages.includes(event.document.languageId)) {
         try {
-          await Analyzer.getFor(document).runIn(/*seconds=*/ 5);
+          await Analyzer.getFor(event.document).runIn(/*seconds=*/ 5);
         } catch (error) {
           Logger.get().error(error as Error);
         }
