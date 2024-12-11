@@ -20,7 +20,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (document) {
         const logger = Logger.get();
         logger.spinner(async () => {
-          Logger.get().showAndDump(`Running IWYU run on ${document.uri.fsPath}...`);
+          Logger.get().showAndAppendLine(`Running IWYU run on ${document.uri.fsPath}...`);
           try {
             await Analyzer.getFor(document).run();
           } catch (error) {

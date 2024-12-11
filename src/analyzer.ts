@@ -120,7 +120,7 @@ export class Analyzer {
     );
     const command = `iwyu_tool -p '${commandFilePath}' '${sourceFilePath}' -- -Xiwyu --no_fwd_decls -Xiwyu --verbose=3 -Xiwyu --cxx17ns`;
     const stdout = await exec(command, { cwd: this._root.uri.fsPath });
-    Logger.get().dump(`IWYU run for ${sourceFilePath}:\n$ ${command}\n${stdout}`);
+    Logger.get().append(`IWYU run for ${sourceFilePath}:\n$ ${command}\n${stdout}`);
     const diagnostics: DiagnosticsByUri = Object.create(null);
     const lines = stdout.split('\n');
     for (let i = 0; i < lines.length; i++) {

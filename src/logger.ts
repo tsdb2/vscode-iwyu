@@ -40,16 +40,20 @@ export class Logger {
     this._output.show();
   }
 
-  public dump(log: string): void {
-    this._output.append(log);
+  public append(lines: string): void {
+    this._output.append(lines);
   }
 
-  public showAndDump(log: string): void {
+  public appendLine(line: string): void {
+    this._output.appendLine(line);
+  }
+
+  public showAndAppendLine(line: string): void {
     this._output.show();
-    this._output.append(log);
+    this._output.appendLine(line);
   }
 
   public error(error: Error): void {
-    this._output.append(`ERROR: ${error.message}\n\n${error.stack}`);
+    this._output.append(`ERROR: ${error.message}\n\n${error.stack}\n`);
   }
 }
