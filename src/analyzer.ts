@@ -31,7 +31,7 @@ const TOKEN_PATTERNS = [
 type DiagnosticsByUri = { [uri: string]: vscode.Diagnostic[] };
 
 export class Analyzer {
-  private static readonly _analyzers: { [filePath: string]: Analyzer } = Object.create(null);
+  private static readonly _analyzers: { [uri: string]: Analyzer } = Object.create(null);
 
   private static _diagnostics: vscode.DiagnosticCollection | null = null;
 
@@ -63,11 +63,11 @@ export class Analyzer {
   }
 
   public static getFor(document: vscode.TextDocument): Analyzer {
-    const filePath = document.fileName;
-    if (!Analyzer._analyzers[filePath]) {
-      Analyzer._analyzers[filePath] = new Analyzer(document);
+    const uri = document.uri.toString();
+    if (!Analyzer._analyzers[uri]) {
+      Analyzer._analyzers[uri] = new Analyzer(document);
     }
-    return Analyzer._analyzers[filePath];
+    return Analyzer._analyzers[uri];
   }
 
   private constructor(document: vscode.TextDocument) {
