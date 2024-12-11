@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import vscode from 'vscode';
 
+import { Logger } from './logger';
+
 function exec(command: string, options: object): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     childProcess.exec(command, options, (error, stdout, stderr) => {
@@ -28,13 +30,14 @@ export class Analyzer {
   // Timeout used to debounce our runs if the user re-saves too quickly.
   private _timeout: NodeJS.Timeout | null = null;
 
-  public static initialize(): void {
+  public static initialize(): typeof Analyzer {
     if (!Analyzer._diagnostics) {
       Analyzer._diagnostics = vscode.languages.createDiagnosticCollection('iwyu');
     }
+    return Analyzer;
   }
 
-  public static finalize(): void {
+  public static dispose(): void {
     Analyzer._diagnostics?.dispose();
     Analyzer._diagnostics = null;
   }
@@ -117,7 +120,7 @@ export class Analyzer {
     );
     const command = `iwyu_tool -p '${commandFilePath}' '${sourceFilePath}' -- -Xiwyu --no_fwd_decls -Xiwyu --verbose=3 -Xiwyu --cxx17ns`;
     const stdout = await exec(command, { cwd: this._root.uri.fsPath });
-    // console.info(`IWYU run:\n$ ${command}\n${stdout}`);
+    Logger.get().dump(`IWYU run for ${sourceFilePath}:\n$ ${command}\n${stdout}`);
     const diagnostics: DiagnosticsByUri = Object.create(null);
     const lines = stdout.split('\n');
     for (let i = 0; i < lines.length; i++) {

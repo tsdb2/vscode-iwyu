@@ -1,6 +1,6 @@
 {
   "name": "vscode-iwyu",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "displayName": "Include-What-You-Use",
   "description": "IWYU extension for VS Code.",
   "repository": "https://github.com/tsdb2/vscode-iwyu.git",
