@@ -1,16 +1,9 @@
 import childProcess from 'node:child_process';
-import crypto from 'node:crypto';
 import path from 'node:path';
 
 import vscode from 'vscode';
 
 import { Logger } from './logger';
-
-function hash(text: string): string {
-  const hash = crypto.createHash('sha256');
-  hash.update(text);
-  return hash.digest('hex');
-}
 
 function exec(command: string, options: object): Promise<string> {
   return new Promise<string>((resolve, reject) => {
@@ -42,8 +35,9 @@ export class Analyzer {
   private readonly _root: vscode.WorkspaceFolder;
   private readonly _document: vscode.TextDocument;
 
-  // Hash of the last revision we analyzed, which we keep here to avoid duplicated work.
-  private _lastHash: string = '';
+  // We cache the last analyzed content of our document here to avoid duplicated work. If
+  // `this._document.getText() === this._lastRevision` we skip a run.
+  private _lastRevision: string = '';
 
   // Timeout used to debounce our runs if the user re-saves too quickly.
   private _timeout: NodeJS.Timeout | null = null;
@@ -80,6 +74,16 @@ export class Analyzer {
     }
     this._root = root;
     this._document = document;
+  }
+
+  private _skip(force: boolean): boolean {
+    const revision = this._document.getText();
+    if (force || revision !== this._lastRevision) {
+      this._lastRevision = revision;
+      return false;
+    } else {
+      return true;
+    }
   }
 
   private _getTokenRange(position: vscode.Position): vscode.Range {
@@ -148,14 +152,12 @@ export class Analyzer {
       this._document.uri,
       /*includeWorkspaceFolder=*/ false,
     );
-    const revision = hash(this._document.getText());
-    if (!force && revision === this._lastHash) {
+    if (this._skip(force)) {
       logger.appendLine(
         `Skipping IWYU analysis for ${sourceFilePath} which hasn't changed since last findings.`,
       );
       return;
     }
-    this._lastHash = revision;
     const commandFilePath = path.join(this._root.uri.fsPath, 'compile_commands.json');
     const command = `iwyu_tool -p '${commandFilePath}' '${sourceFilePath}' -- -Xiwyu --no_fwd_decls -Xiwyu --verbose=3 -Xiwyu --cxx17ns`;
     await logger.spinner(async () => {
