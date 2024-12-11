@@ -124,11 +124,7 @@ export class Analyzer {
     return true;
   }
 
-  private _processRemoveFinding(
-    diagnostics: vscode.Diagnostic[],
-    uri: string,
-    line: string,
-  ): boolean {
+  private _processRemoveFinding(diagnostics: vscode.Diagnostic[], line: string): boolean {
     const match = line.match(/^- (#include\s*("[^"]+"|<[^>]+>))\s*\/\/ lines (\d+)-(\d+)/);
     if (!match) {
       return false;
@@ -180,7 +176,7 @@ export class Analyzer {
             diagnostics[uri] = [];
           }
           for (i++; i < lines.length && lines[i] !== ''; i++) {
-            this._processRemoveFinding(diagnostics[uri], uri, lines[i]);
+            this._processRemoveFinding(diagnostics[uri], lines[i]);
           }
         }
       }
